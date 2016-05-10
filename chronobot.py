@@ -95,7 +95,7 @@ def dateToPage(year_given, month_given, day_given): #Retourne un tuple (page, ty
     return (page, type_de_page)
 
 def createPageIfNotExists(year_given, month_given, day_given, type_de_page):
-    page = dateToPage(year_given, month_given, day_given)
+    page = dateToPage(year_given, month_given, day_given)[0]
     if not page.replace("_", " ") in pagesName :
         print("Page " + page + " created")
         content = getTemplate(year_given, month_given, day_given, type_de_page)
@@ -112,7 +112,7 @@ def createPageIfNotExists(year_given, month_given, day_given, type_de_page):
 def getTemplate(year_given, month_given, day_given, type_de_page):
     if type_de_page == 1: #année
     
-        template = template_year1 + str(year_given) + template_year2
+        template = template_year1 + str(year_given) + " ==" + no_event + template_year2
         for month in months:
             template += "\n==== [[" + month + " " + str(year_given) + "|" + month + "]] ===="
     elif type_de_page == 2: #mois
@@ -122,11 +122,11 @@ def getTemplate(year_given, month_given, day_given, type_de_page):
             template += "' "
         else :
             template += "e "
-        template += months[month_given-1] + " [[" + str(year_given) + "]]" + template_month2
+        template += months[month_given-1] + " [[" + str(year_given) + "]] ==" + no_event + template_month2
     
     else :
         
-        template = template_day + str(day_given) + " [[" + months[month_given-1] + " " + str(year_given) + "|" + months[month_given-1] + "]] [[" + str(year_given) + "]]==\n"
+        template = template_day + str(day_given) + " [[" + months[month_given-1] + " " + str(year_given) + "|" + months[month_given-1] + "]] [[" + str(year_given) + "]]==" + no_event
             
     return template
 
@@ -135,6 +135,8 @@ def main():
 
     blackList = ['Accueil', 'Hypermot', 'ImageBot']
     whiteList= [] #['Herbert George Wells'] #juste pour tester avec certaines pages
+    
+    createPageIfNotExists(1994, 8, 8, 3)
 
     done = False
     lastEntry = None
@@ -290,10 +292,11 @@ baseurl = 'http://wikipast.world/wiki/'
 months = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre']
 
 template_year1 = "== Événements durant l'année "
-template_year2 = " ==\n== Mois de l'année =="
+template_year2 = " \n== Mois de l'année =="
 template_month1 = "== Evénements durant le mois d" 
-template_month2 = " ==\n== Jours du mois =="
+template_month2 = "\n== Jours du mois =="
 template_day = "== Evénements du " 
+no_event = "\nPas encore d'événements !"
 
 user = 'ChronoBot'
 passw = urllib.parse.quote('yolobotHUM369')
