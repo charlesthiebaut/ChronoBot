@@ -14,38 +14,14 @@ def add_entry(name_given, event_given, year_given, month_given, day_given):
 
     name = name_given.replace('_', ' ') #normalement, pas utile
 
-    type_de_page = None
+    tuple = dateToPage(year_given, month_given, day_given)
+    page = tuple[0]
+    type_de_page = tuple[1]
+    
+    createPageIfNotExists(page, type_de_page)
 
-    if day_given == None and month_given == None:
-        type_de_page = 1
-        page = str(year_given)
-        
-        createPageIfNotExists(page, type_de_page)
-
-        req3 = '?format=json&action=query&prop=revisions&rvprop=content|timestamp&titles=' + page
-        r = requests.post(baseUrl + 'api.php' + req3)
-
-    elif day_given == None:
-        type_de_page = 2
-        month = months[month_given - 1]
-
-        page = month + '_' + str(year_given)
-        
-        createPageIfNotExists(page, type_de_page)
-
-        req3 = '?format=json&action=query&prop=revisions&rvprop=content|timestamp&titles=' + page
-        r = requests.post(baseUrl + 'api.php' + req3)
-
-    else:
-        type_de_page = 3
-        month = months[month_given-1]
-
-        page = str(day_given) + '_' + month + '_' + str(year_given)
-        
-        createPageIfNotExists(page, type_de_page)
-
-        req3 = '?format=json&action=query&prop=revisions&rvprop=content|timestamp&titles=' + page
-        r = requests.post(baseUrl + 'api.php' + req3)
+    req3 = '?format=json&action=query&prop=revisions&rvprop=content|timestamp&titles=' + page
+    r = requests.post(baseUrl + 'api.php' + req3)
 
 
     print(page)
@@ -82,23 +58,62 @@ def add_entry(name_given, event_given, year_given, month_given, day_given):
     
     
     return
+    
+def dateToPage(year_given, month_given, day_given): #Retourne un tuple (page, type_de_page)
+    if day_given == None and month_given == None:
+        type_de_page = 1
+        page = str(year_given)
+    elif day_given == None:
+        type_de_page = 2
+        month = months[month_given - 1]
 
-def createPageIfNotExists(page, type_de_page):
-    #TODO Créer page avec bon template
+        page = month + '_' + str(year_given)
+    else:
+        type_de_page = 3
+        month = months[month_given-1]
+
+        page = str(day_given) + '_' + month + '_' + str(year_given)
+        
+    return (page, type_de_page)
+
+def createPageIfNotExists(year_given, month_given, day_given, page, type_de_page):
+    
     if not page.replace("_", " ") in pagesName :
         print("Page " + page + " created")
-        content = "Hello World"
+        content = getTemplate(year_given, month_given, day_given, page, type_de_page)
         headers={'content-type':'application/x-www-form-urlencoded'}
         payload={'action':'edit','assert':'user','format':'json','text':content,'summary':summary,'title':page,'token':edit_token}
         r4=requests.post(baseurl+'api.php',headers=headers,data=payload,cookies=edit_cookie)
         pagesName.append(page)
+
+def getTemplate(year_given, month_given, day_given, page, type_de_page):
+    if type_de_page == 1: #année
     
+        template = template_year1 + str(year_given) + template_year2
+        for month in months:
+            template += "\n==== [[" + month + " " + str(year_given) + "|" + month + "]] ===="
+    elif type_de_page == 2: #mois
+    
+        template = template_month1
+        if months[month_given-1][0] == "A" or months[month_given-1][0] == "O":
+            template += "' "
+        else :
+            template += "e "
+        template += months[month_given-1] + " [[" + str(year_given) + "]]" + template_month2
+    
+    else :
+        
+        template = template_day + str(day_given) + " [[" + months[month_given-1] + " " + str(year_given) + "|" + months[month_given-1] + "]] [[" + str(year_given) + "]]==\n"
+            
+    return template
 
 def main():
     baseUrl='http://wikipast.world/wiki/'
 
     blackList = ['Accueil', 'Hypermot', 'ImageBot']
-    whiteList= ['Herbert George Wells'] #juste pour tester avec certaines pages
+    whiteList= [] #['Herbert George Wells'] #juste pour tester avec certaines pages
+    
+    createPageIfNotExists(1994, 8, 8, "8 Août 1994", 3)
 
     done = False
     lastEntry = None
@@ -218,6 +233,12 @@ baseUrl = 'http://wikipast.world/wiki/'
 baseurl = 'http://wikipast.world/wiki/'
 
 months = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre']
+
+template_year1 = "== Événements durant l'année "
+template_year2 = " ==\n== Mois de l'année =="
+template_month1 = "== Evénements durant le mois d" 
+template_month2 = " ==\n== Jours du mois =="
+template_day = "== Evénements du " 
 
 user = 'ChronoBot'
 passw = urllib.parse.quote('yolobotHUM369')
