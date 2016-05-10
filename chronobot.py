@@ -17,14 +17,15 @@ def add_entry(name_given, event_given, year_given, month_given, day_given):
     tuple = dateToPage(year_given, month_given, day_given)
     page = tuple[0]
     type_de_page = tuple[1]
+    print(page)
     
-    createPageIfNotExists(page, type_de_page)
+    createPageIfNotExists(year_given, month_given, day_given, type_de_page)
+    
+    if type_de_page == 3:
+        addDayToMonth(year_given, month_given, day_given)
 
     req3 = '?format=json&action=query&prop=revisions&rvprop=content|timestamp&titles=' + page
     r = requests.post(baseUrl + 'api.php' + req3)
-
-
-    print(page)
 
     for page2 in r.json()['query']['pages']:
         for rev in r.json()['query']['pages'][page2]['revisions']:
@@ -59,6 +60,23 @@ def add_entry(name_given, event_given, year_given, month_given, day_given):
     
     return
     
+def addDayToMonth(year_given, month_given, day_given):
+    pageMonth = dateToPage(year_given, month_given, None)[0]
+    pageDay = dateToPage(year_given, month_given, day_given)[0]
+    req3 = '?format=json&action=query&prop=revisions&rvprop=content|timestamp&titles=' + pageMonth
+    r = requests.post(baseUrl + 'api.php' + req3)
+
+    for page2 in r.json()['query']['pages']:
+        for rev in r.json()['query']['pages'][page2]['revisions']:
+            content = rev['*']
+            if not pageDay in content:
+                content += "\n* [[" + pageDay + "|" + str(day_given) + " " + months[month_given-1] + "]]"
+                
+                headers = {'content-type':'application/x-www-form-urlencoded'}
+                payload = {'action': 'edit', 'assert': 'user', 'format': 'json', 'text': content, 'summary': summary,
+                           'title': pageMonth, 'token': edit_token}
+                r4 = requests.post(baseurl + 'api.php', headers = headers, data = payload, cookies = edit_cookie)
+    
 def dateToPage(year_given, month_given, day_given): #Retourne un tuple (page, type_de_page)
     if day_given == None and month_given == None:
         type_de_page = 1
@@ -76,17 +94,22 @@ def dateToPage(year_given, month_given, day_given): #Retourne un tuple (page, ty
         
     return (page, type_de_page)
 
-def createPageIfNotExists(year_given, month_given, day_given, page, type_de_page):
-    
+def createPageIfNotExists(year_given, month_given, day_given, type_de_page):
+    page = dateToPage(year_given, month_given, day_given)
     if not page.replace("_", " ") in pagesName :
         print("Page " + page + " created")
-        content = getTemplate(year_given, month_given, day_given, page, type_de_page)
+        content = getTemplate(year_given, month_given, day_given, type_de_page)
         headers={'content-type':'application/x-www-form-urlencoded'}
         payload={'action':'edit','assert':'user','format':'json','text':content,'summary':summary,'title':page,'token':edit_token}
         r4=requests.post(baseurl+'api.php',headers=headers,data=payload,cookies=edit_cookie)
         pagesName.append(page)
+        
+        if type_de_page == 2:
+            createPageIfNotExists(year_given, None, None, 1)
+        elif type_de_page == 3:
+            createPageIfNotExists(year_given, month_given, None, 2)
 
-def getTemplate(year_given, month_given, day_given, page, type_de_page):
+def getTemplate(year_given, month_given, day_given, type_de_page):
     if type_de_page == 1: #année
     
         template = template_year1 + str(year_given) + template_year2
@@ -112,8 +135,6 @@ def main():
 
     blackList = ['Accueil', 'Hypermot', 'ImageBot']
     whiteList= [] #['Herbert George Wells'] #juste pour tester avec certaines pages
-    
-    createPageIfNotExists(1994, 8, 8, "8 Août 1994", 3)
 
     done = False
     lastEntry = None
@@ -132,7 +153,19 @@ def main():
         
         if len(pageListSoup.findAll("p")) < 500:
             done = True
+     
+    #Reset date pages
+    for pageName in pagesName:
+        tuple = ourTitleDate(pageName)
+        if tuple[0]:
+            """content = getTemplate(tuple[2], tuple[3], tuple[4], pageName, tuple[1])
+            headers={'content-type':'application/x-www-form-urlencoded'}
+            payload={'action':'edit','assert':'user','format':'json','text':content,'summary':summary,'title':pageName,'token':edit_token}
+            r4=requests.post(baseurl+'api.php',headers=headers,data=payload,cookies=edit_cookie)
+            print("Reset " + pageName)"""
+            
 
+    #Parsing
     count = 0
     for pageName in pagesName:
         #print(pageName)
@@ -217,7 +250,7 @@ def isTitleDate(dateString):
     if "." in dateString: #format : 1994.2.18, ou 1994.2
         list = dateString.split(".")
         return isAInt(list[0]) and len(list) <= 3
-    elif isAInt(dateString) : #format : 1994
+    elif isAInt(dateString) and len(dateString) == 4: #format : 1994
         return True
     else: #format : 18 Février 1994, ou Février 1994
         list = dateString.split(" ")
@@ -227,6 +260,28 @@ def isTitleDate(dateString):
             return list[0] in months and isAInt(list[1])
         else :
             return False
+            
+def ourTitleDate(dateString): #retourne un tuple (is, type_de_page, year, month, day)
+    if "." in dateString: #format : 1994.2.18, ou 1994.2
+        return (False, 0, None, None, None)
+    elif isAInt(dateString) and len(dateString) == 4 and int(dateString) < 2000: #format : 1994
+        return (True, 1, int(dateString), None, None)
+    else: #format : 18 Février 1994, ou Février 1994
+        list = dateString.split(" ")
+        if len(list) == 3 : #format : 18 Février 1994
+            liste = [i for i,x in enumerate(months) if x == list[1]]
+            if len(liste) > 0:
+                return (isAInt(list[0]) and list[1] in months and isAInt(list[2]), 3, int(list[2]), liste[0]+1, int(list[0]))
+            else:
+                return (False, 0, None, None, None)
+        elif len(list) == 2 : #format : Février 1994
+            liste = [i for i,x in enumerate(months) if x == list[0]]
+            if len(liste) > 0:
+                return (list[0] in months and isAInt(list[1]), 2, int(list[1]), liste[0]+1, None)
+            else:
+                return (False, 0, None, None, None)
+        else :
+            return (False, 0, None, None, None)
 
             
 baseUrl = 'http://wikipast.world/wiki/'
