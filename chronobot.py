@@ -30,6 +30,8 @@ def add_entry(name_given, event_given, year_given, month_given, day_given):
     for page2 in r.json()['query']['pages']:
         for rev in r.json()['query']['pages'][page2]['revisions']:
             content = rev['*']
+            
+            content = content.replace(no_event, "")
 
             x = content.find('=== [[' + name + ']] ===')
 
@@ -49,7 +51,7 @@ def add_entry(name_given, event_given, year_given, month_given, day_given):
                     ins = content.find("== Mois de l'année ==")
                     z = content[:ins-1] + '\n=== [[{0}]] ===\n'.format(name) + event_given + '\n' + content[ins-1:]
 
-                print(z)
+                #print(z)
 
 
             headers = {'content-type':'application/x-www-form-urlencoded'}
@@ -85,12 +87,12 @@ def dateToPage(year_given, month_given, day_given): #Retourne un tuple (page, ty
         type_de_page = 2
         month = months[month_given - 1]
 
-        page = month + '_' + str(year_given)
+        page = month + ' ' + str(year_given)
     else:
         type_de_page = 3
         month = months[month_given-1]
 
-        page = str(day_given) + '_' + month + '_' + str(year_given)
+        page = str(day_given) + ' ' + month + ' ' + str(year_given)
         
     return (page, type_de_page)
 
@@ -136,7 +138,9 @@ def main():
     blackList = ['Accueil', 'Hypermot', 'ImageBot']
     whiteList= [] #['Herbert George Wells'] #juste pour tester avec certaines pages
     
-    createPageIfNotExists(1994, 8, 8, 3)
+    createPageIfNotExists(2994, 8, 8, 3)
+    print(pagesName)
+    add_entry("Fred_Kaplan", "YOLO", 2994, 8, 8)
 
     done = False
     lastEntry = None
